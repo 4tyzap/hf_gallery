@@ -1,0 +1,1823 @@
+<!-- /app/auth_gallery_v13.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <title>HF Gallery: миниатюры + ранний старт видео</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <style>
+        .auth-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+        
+        .auth-container {
+            background: linear-gradient(135deg, #1a1a2e, #0f3460);
+            border-radius: 15px;
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        
+        .auth-modal h2 {
+            font-size: 2.2rem;
+            margin-bottom: 20px;
+            color: #4cc9f0;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .auth-modal p {
+            font-size: 1.1rem;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+        
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .token-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            padding: 15px 25px;
+            color: white;
+            font-size: 1.1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .token-input:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #4cc9f0;
+            box-shadow: 0 0 15px rgba(76, 201, 240, 0.4);
+        }
+        
+        .auth-btn {
+            background: linear-gradient(135deg, #4cc9f0, #3a86ff);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .auth-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(135deg, #3a86ff, #4cc9f0);
+        }
+        
+        .auth-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .auth-error {
+            color: #ff6b6b;
+            margin-top: 15px;
+            min-height: 25px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .auth-error.visible {
+            opacity: 1;
+        }
+        
+        .auth-info {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-top: 20px;
+        }
+        
+        .auth-link {
+            color: #4cc9f0;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .auth-link:hover {
+            text-decoration: underline;
+            color: #3a86ff;
+        }
+        
+        .auth-footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .logout-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+		
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .breadcrumbs {
+            display: flex;
+            align-items: center;
+            padding: 15px 0;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            margin: 5px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .breadcrumb:hover {
+            color: #4cc9f0;
+        }
+        
+        .breadcrumb-separator {
+            margin: 0 10px;
+            opacity: 0.7;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 25px 0;
+            flex-wrap: wrap;
+        }
+        
+        .search-box {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 50px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .search-box input {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1.1rem;
+            width: 100%;
+            padding: 5px 10px;
+            outline: none;
+        }
+        
+        .search-box input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .sorting-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        
+        .sort-btn {
+            background: rgba(76, 201, 240, 0.2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+        }
+        
+        .sort-btn.active {
+            background: rgba(76, 201, 240, 0.6);
+            box-shadow: 0 0 15px rgba(76, 201, 240, 0.4);
+        }
+        
+        .sort-btn:hover {
+            background: rgba(76, 201, 240, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .download-btn {
+            background: rgba(76, 201, 240, 0.2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            margin: 10px auto;
+        }
+        
+        .download-btn:hover {
+            background: rgba(76, 201, 240, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .download-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            background: rgba(76, 201, 240, 0.1);
+        }
+        
+        .download-btn i {
+            transition: transform 0.3s ease;
+        }
+        
+        .download-btn.processing i {
+            animation: spin 1s linear infinite;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2rem;
+        }
+        
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 25px;
+            padding: 20px 0;
+        }
+        
+        .thumbnail, .folder {
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            aspect-ratio: 4/3;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #151528;
+        }
+        
+        .thumbnail:hover, .folder:hover {
+            transform: translateY(-10px) scale(1.03);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            z-index: 2;
+        }
+        
+        .folder {
+            background: linear-gradient(135deg, #2a2a40, #1e2a52);
+        }
+        
+        .folder-icon {
+            font-size: 4rem;
+            color: #4cc9f0;
+            text-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+        
+        .thumbnail-container, .folder-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .thumbnail img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transition: transform 0.5s ease;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .thumbnail img.loaded {
+            opacity: 1;
+        }
+        
+        .thumbnail:hover img {
+            transform: scale(1.05);
+        }
+        
+        .item-name {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+            color: white;
+            padding: 60px 15px 15px 15px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            text-align: center;
+        }
+        
+        /* НАЗВАНИЯ ПАПОК ВСЕГДА ВИДИМЫ */
+        .folder .folder-name {
+            position: relative;
+            bottom: auto;
+            left: auto;
+            right: auto;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 15px 10px;
+            font-size: 0.95rem;
+            opacity: 1;
+            width: 100%;
+            text-align: center;
+            border-radius: 0 0 12px 12px;
+            margin-top: auto;
+            transition: background 0.3s ease;
+        }
+        
+        .folder:hover .folder-name {
+            background: rgba(0, 0, 0, 0.7);
+        }
+        
+        .thumbnail:hover .item-name {
+            opacity: 1;
+        }
+        
+        /* Чекбокс для выбора изображения */
+        .item-checkbox {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 24px;
+            height: 24px;
+            z-index: 10;
+            cursor: pointer;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.7);
+            background: rgba(0, 0, 0, 0.4);
+            appearance: none;
+            transition: all 0.2s ease;
+        }
+        
+        .item-checkbox:checked {
+            background: #4cc9f0;
+            border-color: #4cc9f0;
+        }
+        
+        .item-checkbox:checked::after {
+            content: '\f00c';
+            font-family: 'Font Awesome 5 Free';
+            font-weight: 900;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 14px;
+        }
+        
+        .item-checkbox:hover {
+            transform: scale(1.1);
+            background: rgba(76, 201, 240, 0.4);
+        }
+        
+        .thumbnail.selected {
+            box-shadow: 0 0 0 3px #4cc9f0, 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Индикатор загрузки для миниатюр */
+        .thumbnail-loader {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #4cc9f0;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 5;
+        }
+        
+        /* Модальное окно */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+        }
+        
+        .modal-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-image {
+            max-width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+            transition: transform 0.2s ease;
+            cursor: default;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .modal-image.loaded {
+            opacity: 1;
+        }
+        
+        .modal-image.zoomed {
+            transform: scale(1.5);
+            cursor: grab;
+        }
+        
+        .modal-image.zoomed.dragging {
+            cursor: grabbing;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 40px;
+            color: white;
+            cursor: pointer;
+            z-index: 1001;
+            background: rgba(0, 0, 0, 0.5);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        
+        .modal-close.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .modal-close:hover {
+            background: rgba(255, 0, 0, 0.7);
+            transform: rotate(90deg) scale(1.1);
+        }
+        
+        .modal-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 50px;
+            color: white;
+            cursor: pointer;
+            z-index: 1001;
+            background: rgba(0, 0, 0, 0.5);
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal-nav.visible {
+            opacity: 1;
+        }
+        
+        .modal-nav:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-50%) scale(1.1);
+        }
+        
+        .modal-prev {
+            left: 30px;
+        }
+        
+        .modal-next {
+            right: 30px;
+        }
+        
+        .modal-zoom {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal-zoom.visible {
+            opacity: 1;
+        }
+        
+        .modal-zoom:hover {
+            background: rgba(50, 50, 200, 0.8);
+        }
+        
+        .image-info {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 1rem;
+            z-index: 1001;
+            max-width: 300px;
+            text-align: right;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .image-info.visible {
+            opacity: 1;
+        }
+        
+        .counter {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 1.1rem;
+            z-index: 1001;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .counter.visible {
+            opacity: 1;
+        }
+        
+        /* Индикатор загрузки для модального окна */
+        .modal-loader {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #4cc9f0;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 1001;
+            display: none;
+        }
+        
+        .modal-loader.active {
+            display: block;
+        }
+        
+        /* Анимация */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .thumbnail, .folder {
+            animation: fadeIn 0.5s ease forwards;
+            opacity: 0;
+        }
+        
+        /* Загрузчик */
+        .loader {
+            display: flex;
+            justify-content: center;
+            padding: 50px;
+        }
+        
+        .loader-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #4cc9f0;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .gallery {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                gap: 15px;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            .modal-nav {
+                width: 50px;
+                height: 50px;
+                font-size: 30px;
+            }
+            
+            .modal-zoom {
+                padding: 10px 20px;
+                font-size: 1rem;
+            }
+            
+            .folder .folder-name {
+                font-size: 0.85rem;
+                padding: 10px 5px;
+            }
+            
+            .download-btn {
+                padding: 10px 20px;
+                font-size: 1rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .gallery {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 10px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .modal-prev {
+                left: 10px;
+            }
+            
+            .modal-next {
+                right: 10px;
+            }
+            
+            .modal-close {
+                top: 10px;
+                right: 10px;
+                font-size: 30px;
+                width: 45px;
+                height: 45px;
+            }
+            
+            .folder-icon {
+                font-size: 3rem;
+            }
+            
+            .folder .folder-name {
+                font-size: 0.8rem;
+                padding: 8px 3px;
+            }
+            
+            .sorting-controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .sort-btn {
+                width: 100%;
+                max-width: 300px;
+                justify-content: center;
+            }
+            
+            .item-checkbox {
+                width: 20px;
+                height: 20px;
+            }
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px 0;
+            margin-top: 40px;
+            font-size: 1rem;
+            opacity: 0.8;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .debug-info {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px auto;
+            max-width: 800px;
+            font-size: 0.9rem;
+            font-family: monospace;
+        }
+        
+        .info-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px auto;
+            max-width: 800px;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .nav-btn {
+            background: rgba(76, 201, 240, 0.2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+        }
+        
+        .nav-btn:hover {
+            background: rgba(76, 201, 240, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .download-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .selection-info {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        /* Добавлено: Стили для кнопки скачивания в модальном окне */
+        .modal-download {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal-download.visible {
+            opacity: 1;
+        }
+        
+        .modal-download:hover {
+            background: rgba(50, 200, 50, 0.8);
+        }
+    .delete-btn{background:rgba(255,80,80,.15);color:#fff;border:none;padding:12px 25px;border-radius:50px;cursor:pointer;transition:.3s;display:inline-flex;gap:10px;align-items:center;font-size:1.1rem;box-shadow:0 4px 15px rgba(0,0,0,.2);margin:10px auto;}
+    .delete-btn:hover{background:rgba(255,80,80,.35);transform:translateY(-2px);}
+    .modal-video{max-width:100%;max-height:90vh;box-shadow:0 0 40px rgba(0,0,0,.7);display:none;}
+    .thumbnail-loader{position:absolute;width:40px;height:40px;border:4px solid rgba(255,255,255,.3);border-top-color:#4cc9f0;border-radius:50%;animation:spin 1s linear infinite;z-index:5}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .modal-download{position:absolute;bottom:30px;left:30px;background:rgba(0,0,0,.7);color:#fff;padding:15px 25px;border-radius:50px;font-size:1.1rem;cursor:pointer;z-index:1001;display:flex;gap:10px;transition:.3s;opacity:0}
+    .modal-download.visible{opacity:1}
+    .modal-image.loaded{opacity:1}
+
+    .video-badge{position:absolute;right:8px;top:8px;background:rgba(0,0,0,.7);color:#fff;padding:4px 8px;border-radius:999px;font-size:.8rem;display:flex;gap:6px;align-items:center;z-index:6}
+    .video-badge i{font-size:.75rem}
+    .thumbnail{position:relative}
+    .thumbnail-loader{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:40px;height:40px;border:4px solid rgba(255,255,255,.3);border-top-color:#4cc9f0;border-radius:50%;animation:spin 1s linear infinite;z-index:5}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .delete-btn{background:rgba(255,80,80,.15);color:#fff;border:none;padding:12px 25px;border-radius:50px;cursor:pointer;transition:.3s;display:inline-flex;gap:10px;align-items:center;font-size:1.1rem;box-shadow:0 4px 15px rgba(0,0,0,.2);margin:10px auto}
+    .delete-btn:hover{background:rgba(255,80,80,.35);transform:translateY(-2px)}
+    .modal-video{max-width:100%;max-height:90vh;box-shadow:0 0 40px rgba(0,0,0,.7);display:none}
+    .modal-download{position:absolute;bottom:30px;left:30px;background:rgba(0,0,0,.7);color:#fff;padding:15px 25px;border-radius:50px;font-size:1.1rem;cursor:pointer;z-index:1001;display:flex;gap:10px;transition:.3s;opacity:0}
+    .modal-download.visible{opacity:1}
+    .modal-image.loaded{opacity:1}
+	
+    /* Бейдж оценки эстетики (почему: явная, всегда видимая метка в правом нижнем углу) */
+    .score-badge{
+      position:absolute;
+      right:10px;
+      bottom:10px;
+      background: rgba(0,0,0,.75);
+      color:#fff;
+      font-size:.9rem;
+      padding:6px 10px;
+      border-radius:999px;
+      display:flex;
+      align-items:center;
+      gap:6px;
+      z-index:6;
+      box-shadow:0 4px 12px rgba(0,0,0,.35);
+      backdrop-filter: blur(2px);
+    }
+    .score-badge i{font-size:.85rem}
+  </style>
+</head>
+<body>
+  <button class="logout-btn" id="logoutBtn" style="display:none;"><i class="fas fa-sign-out-alt"></i> Выход</button>
+
+  <div class="container" id="mainContainer" style="display:none;">
+    <header>
+      <h1><i class="fas fa-images"></i> Галерея</h1>
+      <div class="subtitle">Миниатюры, ранний старт видео, ZIP, удаление</div>
+    </header>
+
+    <div class="breadcrumbs" id="breadcrumbs">
+      <div class="breadcrumb" data-path=""><i class="fas fa-home"></i><span>Главная</span></div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="nav-btn" id="btnBack"><i class="fas fa-arrow-left"></i> Назад</button>
+      <button class="nav-btn" id="btnRoot"><i class="fas fa-home"></i> В корневую</button>
+    </div>
+
+    <div class="sorting-controls">
+      <button class="sort-btn active" id="sortName"><i class="fas fa-sort-alpha-down"></i> По имени</button>
+      <button class="sort-btn" id="sortDate"><i class="fas fa-sort-numeric-down"></i> По дате</button>
+    </div>
+
+    <div class="info-panel">
+      <h3><i class="fas fa-info-circle"></i> Миниатюры & видео</h3>
+      <p>Изображения: <code>miniatures/&lt;basename&gt;_thumb.jpg</code>. Видео: 1-й кадр из первых ~1.5 МБ, модалка стартует с частичного файла.</p>
+    </div>
+
+    <div class="controls">
+      <div class="search-box"><i class="fas fa-search"></i><input type="text" id="search" placeholder="Поиск..."></div>
+    </div>
+
+    <div class="download-container">
+      <button id="downloadBtn" class="download-btn" disabled><i class="fas fa-download"></i> Скачать выбранные</button>
+      <button id="deleteBtn" class="delete-btn" disabled><i class="fas fa-trash"></i> Удалить выбранные</button>
+      <div class="selection-info" id="selectionInfo">Выберите элементы</div>
+    </div>
+
+    <div class="status" id="status">
+      <div class="loader"><div class="loader-spinner"></div></div>
+      <p>Загружаем содержимое папки...</p>
+    </div>
+
+    <div class="gallery" id="gallery"></div>
+
+    <footer><p>Обновлено: 2025-09-26</p></footer>
+  </div>
+
+  <!-- Модалка -->
+  <div class="modal" id="imageModal">
+    <div class="modal-close" id="modalClose">&times;</div>
+    <div class="modal-nav modal-prev" id="modalPrev"><i class="fas fa-chevron-left"></i></div>
+    <div class="modal-nav modal-next" id="modalNext"><i class="fas fa-chevron-right"></i></div>
+    <div class="modal-content" id="modalContent">
+      <img class="modal-image" id="modalImage" src="" alt="Просмотр">
+      <video class="modal-video" id="modalVideo" controls playsinline></video>
+      <div class="modal-loader" id="modalLoader"></div>
+    </div>
+    <div class="modal-zoom" id="modalZoom"><i class="fas fa-search-plus"></i> Увеличить (100%)</div>
+    <div class="image-info" id="imageInfo"></div>
+    <div class="counter" id="imageCounter"></div>
+    <div class="modal-download" id="modalDownload"><i class="fas fa-download"></i> Скачать</div>
+  </div>
+
+  <!-- Аутентификация -->
+  <div class="auth-modal" id="authModal">
+    <div class="auth-container">
+      <h2><i class="fas fa-lock"></i> Требуется аутентификация</h2>
+      <p>Введите токен Hugging Face</p>
+      <div class="auth-form">
+        <input type="password" class="token-input" id="tokenInput" placeholder="Ваш токен...">
+        <button class="auth-btn" id="tokenSubmit">Продолжить</button>
+      </div>
+      <div class="auth-error" id="authError"></div>
+      <p class="auth-info">Токен: <a class="auth-link" target="_blank" href="https://huggingface.co/settings/tokens">настройки</a></p>
+      <div class="auth-footer"><p>Для удаления — права записи</p></div>
+    </div>
+  </div>
+
+  <script>
+    /* ==== Конфиг ==== */
+    const REPO_OWNER = "4tyzap";
+    const REPO_NAME  = "FluxUltimateBimbo";
+    const REPO_BRANCH= "main";
+    const BASE_FOLDER= "2025-04-14";
+    const CSV_FILENAME = "aesthetic_scores.csv";
+
+    /* ==== DOM ==== */
+    const gallery       = document.getElementById('gallery');
+    const statusDiv     = document.getElementById('status');
+    const searchInput   = document.getElementById('search');
+    const imageModal    = document.getElementById('imageModal');
+    const modalImage    = document.getElementById('modalImage');
+    const modalVideo    = document.getElementById('modalVideo');
+    const modalClose    = document.getElementById('modalClose');
+    const modalPrev     = document.getElementById('modalPrev');
+    const modalNext     = document.getElementById('modalNext');
+    const modalZoom     = document.getElementById('modalZoom');
+    const imageInfo     = document.getElementById('imageInfo');
+    const imageCounter  = document.getElementById('imageCounter');
+    const breadcrumbs   = document.getElementById('breadcrumbs');
+    const btnBack       = document.getElementById('btnBack');
+    const btnRoot       = document.getElementById('btnRoot');
+    const sortNameBtn   = document.getElementById('sortName');
+    const sortDateBtn   = document.getElementById('sortDate');
+    const downloadBtn   = document.getElementById('downloadBtn');
+    const deleteBtn     = document.getElementById('deleteBtn');
+    const selectionInfo = document.getElementById('selectionInfo');
+    const modalDownload = document.getElementById('modalDownload');
+    const authModal     = document.getElementById('authModal');
+    const tokenInput    = document.getElementById('tokenInput');
+    const tokenSubmit   = document.getElementById('tokenSubmit');
+    const authError     = document.getElementById('authError');
+    const logoutBtn     = document.getElementById('logoutBtn');
+    const mainContainer = document.getElementById('mainContainer');
+    const modalLoader   = document.getElementById('modalLoader');
+
+    /* ==== Состояние ==== */
+    let currentItems = [];
+    let currentPath  = "";
+    let currentIndex = 0;
+    let isZoomed     = false;
+    let controlsTimeout;
+    const HIDE_DELAY = 2000;
+    let selectedItems = new Set();
+    let hfToken = null;
+
+    // Drag/zoom
+    let isDragging=false, startX=0, startY=0, translateX=0, translateY=0, prevTranslateX=0, prevTranslateY=0;
+    let touchStartX=0, touchStartY=0;
+    let currentSort='name';
+
+    // Caches
+    let observer;
+    const blobCache = new Map();
+    const videoPosterCache = new Map();
+    const partialCache = new Map();
+
+    // Partial video
+    const POSTER_RANGE_BYTES = 1.5 * 1024 * 1024;
+    const MODAL_START_BYTES  = 8   * 1024 * 1024;
+    const VIDEO_POSTER_MAX_MB = 200;
+
+    const POSTER_CONCURRENCY = 2;
+    const posterQueue = [];
+    let posterActive = 0;
+
+    // Aesthetic CSV state
+    let currentFolderHasCSV = false;       // почему: влияет на порядок изображений
+    let aestheticCSVRepoPath = null;
+    let aestheticScores = null;            // Map(name->score)
+    let aestheticIndex = null;             // Map(name->order)
+
+    /* ==== Helpers ==== */
+    function repoResolveUrl(repoPath){
+      return `https://huggingface.co/${REPO_OWNER}/${REPO_NAME}/resolve/${REPO_BRANCH}/${repoPath}`;
+    }
+    function repoTreeUrl(fullPath){
+      return `https://huggingface.co/api/models/${REPO_OWNER}/${REPO_NAME}/tree/${REPO_BRANCH}/${fullPath}`;
+    }
+    function commitUrl(){
+      return `https://huggingface.co/api/models/${REPO_OWNER}/${REPO_NAME}/commit/${REPO_BRANCH}`;
+    }
+    function headersAuth(){
+      const h = {}; if (hfToken) h['Authorization'] = `Bearer ${hfToken}`; return h;
+    }
+    async function fetchWithAuth(url, opts={}){
+      const res = await fetch(url, { ...opts, headers: { ...(opts.headers||{}), ...headersAuth() }, cache:'no-store', credentials:'omit' });
+      if (!res.ok) throw new Error(String(res.status));
+      return res;
+    }
+    async function blobUrl(url){
+      if (blobCache.has(url)) return blobCache.get(url);
+      const res = await fetchWithAuth(url);
+      const b = await res.blob();
+      const u = URL.createObjectURL(b);
+      blobCache.set(url, u);
+      return u;
+    }
+    async function fetchPartial(url, endBytes, mimeHint){
+      const key = `${url}#partial:${endBytes}`;
+      if (partialCache.has(key)) return partialCache.get(key);
+      const res = await fetchWithAuth(url, { headers: { Range: `bytes=0-${Math.max(0,endBytes-1)}` }});
+      if (!(res.status===206 || res.status===200)) throw new Error(`HTTP ${res.status}`);
+      const buf = await res.arrayBuffer();
+      const mime = mimeHint || res.headers.get('Content-Type') || 'video/mp4';
+      const obj = URL.createObjectURL(new Blob([buf], {type: mime}));
+      partialCache.set(key, obj);
+      return obj;
+    }
+    async function blobUrlTry(urls){ let lastErr; for (const u of urls){ try { return await blobUrl(u); } catch(e){ lastErr=e; } } throw lastErr||new Error('No URL'); }
+    function formatFileSize(bytes){ if (!bytes && bytes!==0) return ''; if (bytes===0) return '0 Bytes'; const k=1024, s=['Bytes','KB','MB','GB']; const i=Math.floor(Math.log(bytes)/Math.log(k)); return parseFloat((bytes/Math.pow(k,i)).toFixed(1))+' '+s[i]; }
+
+    /* ==== Auth ==== */
+    async function verifyToken(token){
+      try{
+        const me = await fetch('https://huggingface.co/api/whoami-v2', { headers:{ Authorization:`Bearer ${token}` } });
+        if(!me.ok) throw new Error(`HTTP ${me.status}`);
+        const repo = await fetch(`https://huggingface.co/api/models/${REPO_OWNER}/${REPO_NAME}`, { headers:{ Authorization:`Bearer ${token}` }});
+        if(!repo.ok) throw new Error('Нет доступа к репозиторию');
+        return { valid:true };
+      }catch(e){ return {valid:false, error:e.message}; }
+    }
+    function showAuthError(message){
+      authError.textContent = message; authError.classList.add('visible');
+      tokenSubmit.disabled = false; tokenSubmit.textContent = 'Продолжить';
+    }
+    async function authenticate(){
+      const token = tokenInput.value.trim();
+      if (!token){ showAuthError('Введите токен'); return; }
+      tokenSubmit.disabled = true; tokenSubmit.textContent = 'Проверка...'; authError.classList.remove('visible');
+      const r = await verifyToken(token);
+      if (r.valid){
+        hfToken = token; localStorage.setItem('hfToken', token);
+        authModal.style.display = 'none'; mainContainer.style.display = 'block'; logoutBtn.style.display = 'flex';
+        loadFolder('');
+      } else { showAuthError(r.error || 'Неверный токен.'); }
+    }
+    function logout(){
+      hfToken = null; localStorage.removeItem('hfToken');
+      mainContainer.style.display = 'none'; logoutBtn.style.display = 'none';
+      authModal.style.display = 'flex'; tokenInput.value = ''; authError.classList.remove('visible');
+    }
+
+    /* ==== Aesthetic CSV ==== */
+    async function loadAestheticCSVData(csvRepoPath){
+      try{
+        const url = repoResolveUrl(csvRepoPath);
+        const res = await fetchWithAuth(url);
+        const text = await res.text();
+        const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+
+        const scores = new Map();
+        const orderArr = [];
+
+        for (const raw of lines){
+          // поддержка: "filename,score", "filename;score", с/без заголовка
+          const line = raw.replace(/^["']|["']$/g,'');
+          const parts = line.split(/[;,]\s*/);
+          if (parts.length < 2) continue;
+          const name = parts[0].replace(/^["']|["']$/g,'').trim();
+          const sRaw = parts[1].replace(/^["']|["']$/g,'').trim();
+          const score = Number(sRaw);
+          if (!name || Number.isNaN(score)) {
+            // пропускаем возможный заголовок
+            continue;
+          }
+          if (!scores.has(name)){
+            scores.set(name, score);
+            orderArr.push(name);
+          }
+        }
+
+        aestheticScores = scores;
+        aestheticIndex = new Map(orderArr.map((n,i)=>[n,i]));
+      }catch(e){
+        // почему: если CSV сломан/недоступен — не ломаем галерею
+        console.warn('Aesthetic CSV load failed:', e);
+        aestheticScores = null;
+        aestheticIndex = null;
+      }
+    }
+
+    function applyAestheticToItems(items){
+      const folders = items.filter(i=>i.type==='folder').sort((a,b)=>a.name.localeCompare(b.name));
+      const images  = items.filter(i=>i.type==='file-image');
+      const videos  = items.filter(i=>i.type==='file-video');
+
+      // Проставляем оценку на сами элементы (по имени файла)
+      if (aestheticScores){
+        for (const it of images){
+          const score = aestheticScores.get(it.name) ?? aestheticScores.get(it.name.replace(/\.(jpe?g|png|gif|webp)$/i,''));
+          if (typeof score === 'number') it.aestheticScore = score;
+          else delete it.aestheticScore;
+        }
+      } else {
+        for (const it of images){ delete it.aestheticScore; }
+      }
+
+      const byCurrentSort = (a,b)=> currentSort==='name' ? a.name.localeCompare(b.name) : (b.date - a.date);
+
+      // Изображения: сначала строго по CSV, затем остальные по текущей сортировке
+      let orderedImages;
+      if (aestheticIndex && currentFolderHasCSV){
+        const inCsv = images.filter(it => aestheticIndex.has(it.name) || aestheticIndex.has(it.name.replace(/\.(jpe?g|png|gif|webp)$/i,'')));
+        const notInCsv = images.filter(it => !(aestheticIndex.has(it.name) || aestheticIndex.has(it.name.replace(/\.(jpe?g|png|gif|webp)$/i,''))));
+        inCsv.sort((a,b)=>{
+          const an = a.name.replace(/\.(jpe?g|png|gif|webp)$/i,'');
+          const bn = b.name.replace(/\.(jpe?g|png|gif|webp)$/i,'');
+          return (aestheticIndex.get(an) ?? aestheticIndex.get(a.name)) - (aestheticIndex.get(bn) ?? aestheticIndex.get(b.name));
+        });
+        notInCsv.sort(byCurrentSort);
+        orderedImages = [...inCsv, ...notInCsv];
+      } else {
+        orderedImages = images.sort(byCurrentSort);
+      }
+
+      // Видео по текущей сортировке
+      videos.sort(byCurrentSort);
+
+      // Важно: чтобы порядок изображений из CSV не “разрывался” — помещаем видео после изображений
+      return [...folders, ...orderedImages, ...videos];
+    }
+
+    /* ==== Дерево ==== */
+    async function fetchFolderContents(path=""){
+      try{
+        statusDiv.innerHTML = `<div class="loader"><div class="loader-spinner"></div></div><p>Загружаем содержимое папки...</p>`;
+        const fullPath = BASE_FOLDER + (path ? `/${path}` : "");
+        const apiUrl = repoTreeUrl(fullPath);
+
+        const response = await fetch(apiUrl, { headers: headersAuth() });
+        if (response.status === 401) throw new Error('Ошибка авторизации. Проверьте токен.');
+        if (!response.ok) throw new Error(`Ошибка HTTP: ${response.status}`);
+
+        const data = await response.json();
+        const folders = [];
+        const files   = [];
+
+        // reset CSV flags for folder
+        currentFolderHasCSV = false;
+        aestheticCSVRepoPath = null;
+
+        const isImage = (p)=>/\.(jpg|jpeg|png|gif|webp)$/i.test(p);
+        const isVideo = (p)=>/\.(mp4|webm|ogg|mov|m4v|avi)$/i.test(p);
+
+        for (const item of data){
+          if (item.type === 'directory'){
+            const dirName = item.path.split('/').pop();
+            if (dirName.toLowerCase()==='miniatures') continue;
+            folders.push({ type:'folder', name:dirName, fullPath:item.path, path:item.path.replace(`${BASE_FOLDER}/`, ''), date:item.lastCommit?new Date(item.lastCommit.date):new Date() });
+            continue;
+          }
+
+          if (item.type === 'file'){
+            const fileNameOnly = item.path.split('/').pop();
+            // обнаружение CSV в текущей папке
+            if (fileNameOnly.toLowerCase() === CSV_FILENAME){
+              currentFolderHasCSV = true;
+              aestheticCSVRepoPath = item.path;
+              continue; // сам CSV в галерее не показываем
+            }
+
+            if (isImage(item.path) || isVideo(item.path)){
+              const repoPath = item.path;
+              const fileName = repoPath.split('/').pop();
+              const url = repoResolveUrl(repoPath);
+              const size = item.size;
+
+              if (isImage(repoPath)){
+                const lastSlash = repoPath.lastIndexOf('/');
+                const folderDir = repoPath.slice(0, lastSlash);
+                const baseName  = fileName.split('.').slice(0,-1).join('.');
+                const thumbRepoPath = `${folderDir}/miniatures/${baseName}_thumb.jpg`;
+                const thumbUrl = repoResolveUrl(thumbRepoPath);
+                files.push({ type:'file-image', name:fileName, repoPath, url, thumb:thumbUrl, size, date:item.lastCommit?new Date(item.lastCommit.date):new Date() });
+              } else {
+                files.push({ type:'file-video', name:fileName, repoPath, url, size, date:item.lastCommit?new Date(item.lastCommit.date):new Date() });
+              }
+            }
+          }
+        }
+        // Папки по имени (как раньше). Файлы обработаем позже с учётом CSV.
+        folders.sort((a,b)=>a.name.localeCompare(b.name));
+        return [...folders, ...files];
+      }catch(e){
+        console.error('Ошибка при загрузке содержимого папки:', e);
+        statusDiv.innerHTML = `<p style="color:#ff6b6b;font-weight:bold">Ошибка при загрузке содержимого папки</p><p>${e.message}</p>`;
+        return [];
+      }
+    }
+
+    function sortItems(items){
+      // Если есть CSV и он распаршен — применяем новый порядок
+      if (currentFolderHasCSV && (aestheticScores || aestheticIndex)) {
+        return applyAestheticToItems(items);
+      }
+      // Иначе — старое поведение
+      const folders = items.filter(i=>i.type==='folder').sort((a,b)=>a.name.localeCompare(b.name));
+      const files   = items.filter(i=>i.type!=='folder');
+      if (currentSort==='name') files.sort((a,b)=>a.name.localeCompare(b.name));
+      else files.sort((a,b)=>b.date - a.date);
+      return [...folders, ...files];
+    }
+
+    function updateBreadcrumbs(path){
+      breadcrumbs.innerHTML = '';
+      const rootCrumb = document.createElement('div');
+      rootCrumb.className='breadcrumb'; rootCrumb.dataset.path='';
+      rootCrumb.innerHTML = `<i class="fas fa-home"></i><span>Главная</span>`;
+      rootCrumb.addEventListener('click',()=>loadFolder(''));
+      breadcrumbs.appendChild(rootCrumb);
+      if (path){
+        const parts = path.split('/'); let accum='';
+        parts.forEach((part)=>{
+          const sep = document.createElement('div'); sep.className='breadcrumb-separator'; sep.innerHTML = '<i class="fas fa-chevron-right"></i>';
+          breadcrumbs.appendChild(sep);
+          accum += (accum?'/':'')+part;
+          const crumb = document.createElement('div'); crumb.className='breadcrumb'; crumb.dataset.path=accum;
+          crumb.innerHTML = `<span>${part}</span>`;
+          crumb.addEventListener('click',()=>loadFolder(accum));
+          breadcrumbs.appendChild(crumb);
+        });
+      }
+    }
+
+    async function loadFolder(path){
+      currentPath = path;
+      updateBreadcrumbs(path);
+      // Сбрасываем CSV состояния перед загрузкой
+      aestheticScores = null;
+      aestheticIndex = null;
+
+      const items = await fetchFolderContents(path);
+
+      // Если найден CSV — загрузим и применим порядок
+      if (currentFolderHasCSV && aestheticCSVRepoPath){
+        await loadAestheticCSVData(aestheticCSVRepoPath);
+      }
+
+      const sorted = sortItems(items);
+      currentItems = sorted;
+      clearSelection();
+      if (items.length > 0){ statusDiv.style.display='none'; renderGallery(sorted); }
+      else {
+        statusDiv.style.display='block';
+        statusDiv.innerHTML = `<p style="color:#ff6b6b;font-weight:bold">Папка пуста</p><p>Нет файлов или подпапок</p>`;
+        gallery.innerHTML='';
+      }
+    }
+
+    /* ==== Рендер галереи ==== */
+    function renderGallery(items){
+      gallery.innerHTML = '';
+
+      if (currentPath){
+        const parentPath = currentPath.split('/').slice(0,-1).join('/');
+        const backFolder = document.createElement('div');
+        backFolder.className='folder';
+        const container = document.createElement('div'); container.className='folder-container';
+        const icon = document.createElement('i'); icon.className='fas fa-level-up-alt folder-icon';
+        const name = document.createElement('div'); name.className='folder-name'; name.textContent='Вернуться назад';
+        container.appendChild(icon); container.appendChild(name); backFolder.appendChild(container);
+        backFolder.addEventListener('click',()=>loadFolder(parentPath));
+        gallery.appendChild(backFolder);
+      }
+
+      items.forEach((item, idx)=>{
+        let el;
+        if (item.type==='folder'){
+          el = document.createElement('div'); el.className='folder'; el.style.animationDelay = `${idx*.05}s`;
+          const c = document.createElement('div'); c.className='folder-container';
+          const i = document.createElement('i'); i.className='fas fa-folder folder-icon';
+          const n = document.createElement('div'); n.className='folder-name'; n.textContent=item.name;
+          c.appendChild(i); c.appendChild(n); el.appendChild(c);
+          el.addEventListener('click', ()=>loadFolder(item.path));
+        } else {
+          el = document.createElement('div'); el.className='thumbnail'; el.style.animationDelay=`${idx*.05}s`;
+          const c = document.createElement('div'); c.className='thumbnail-container';
+
+          const loader = document.createElement('div'); loader.className='thumbnail-loader'; c.appendChild(loader);
+
+          const checkbox = document.createElement('input');
+          checkbox.type='checkbox'; checkbox.className='item-checkbox';
+          checkbox.dataset.repoPath = item.repoPath;
+          checkbox.addEventListener('change',(e)=>{
+            e.stopPropagation(); toggleSelection(item.repoPath);
+            el.classList.toggle('selected', checkbox.checked);
+          });
+          c.appendChild(checkbox);
+
+          if (item.type==='file-image'){
+            const img = document.createElement('img');
+            img.dataset.src = item.thumb || item.url;
+            img.dataset.fallback = item.url;
+            img.alt = item.name; img.loading='lazy';
+            img.onload = ()=>{ loader.style.display='none'; img.classList.add('loaded'); };
+            img.onerror= ()=>{ loader.style.display='none'; img.classList.add('loaded'); };
+            c.appendChild(img);
+
+            // бейдж оценки, если есть
+            if (typeof item.aestheticScore === 'number'){
+              const badge = document.createElement('div');
+              badge.className='score-badge';
+              badge.innerHTML = `<i class="fas fa-star"></i><span>${item.aestheticScore.toFixed(2)}</span>`;
+              c.appendChild(badge);
+            }
+          } else if (item.type==='file-video'){
+            const img = document.createElement('img');
+            img.alt = item.name; img.loading='lazy';
+            img.dataset.kind = 'video';
+            img.dataset.vidsrc = item.url;
+            img.dataset.repoPath = item.repoPath;
+            img.dataset.size = String(item.size || 0);
+            img.onload = ()=>{ loader.style.display='none'; img.classList.add('loaded'); };
+            img.onerror= ()=>{ loader.style.display='none'; img.classList.add('loaded'); };
+            c.appendChild(img);
+
+            const vbadge = document.createElement('div');
+            vbadge.className='video-badge';
+            vbadge.innerHTML = `<i class="fas fa-play"></i><span>VIDEO</span>`;
+            c.appendChild(vbadge);
+          }
+
+          const name = document.createElement('div'); name.className='item-name'; name.textContent=item.name;
+          el.appendChild(c); el.appendChild(name);
+
+          el.addEventListener('click',(e)=>{
+            if (e.target === checkbox) return;
+            openModal(item);
+          });
+        }
+        gallery.appendChild(el);
+      });
+      setTimeout(initObserver, 100);
+    }
+
+    function listFiles(){ return currentItems.filter(i=>i.type==='file-image' || i.type==='file-video'); }
+
+    /* ==== Lazy ==== */
+    function initObserver(){
+      if (observer) observer.disconnect();
+      observer = new IntersectionObserver(async (entries)=>{
+        for (const entry of entries){
+          if (!entry.isIntersecting) continue;
+          const img = entry.target;
+          const kind = img.dataset.kind || 'image';
+          if (kind === 'video'){
+            if (!img.dataset.generated) schedulePoster(img);
+          } else {
+            const primary = img.dataset.src;
+            const fallback= img.dataset.fallback;
+            if (!img.src){
+              try{ const u = await blobUrlTry([primary, fallback]); img.src = u; }
+              catch{ img.src = 'https://via.placeholder.com/300x225/333333/ffffff?text=Ошибка'; }
+            }
+          }
+        }
+      }, { rootMargin:'200px 0px', threshold:0.01 });
+      document.querySelectorAll('.thumbnail img').forEach(img=>observer.observe(img));
+    }
+
+    function schedulePoster(img){ posterQueue.push(img); processPosterQueue(); }
+    async function processPosterQueue(){
+      if (posterActive >= POSTER_CONCURRENCY || posterQueue.length===0) return;
+      posterActive++;
+      const img = posterQueue.shift();
+      try{ await generateVideoPosterOnDemand(img); }catch(_e){}
+      posterActive--;
+      if (posterQueue.length) processPosterQueue();
+    }
+
+    async function generateVideoPosterOnDemand(img){
+      const repoPath = img.dataset.repoPath;
+      if (videoPosterCache.has(repoPath)){ img.src = videoPosterCache.get(repoPath); img.dataset.generated = '1'; return; }
+      const size = Number(img.dataset.size||0);
+      if (size > VIDEO_POSTER_MAX_MB * 1024 * 1024){ img.src = 'https://via.placeholder.com/300x225/222/ddd?text=Video'; img.dataset.generated = '1'; return; }
+      try{
+        const partialURL = await fetchPartial(img.dataset.vidsrc, POSTER_RANGE_BYTES);
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        video.muted = true;
+        video.src = partialURL;
+
+        await new Promise(res => video.addEventListener('loadeddata', res, {once:true}));
+        try { video.currentTime = 0; await new Promise(res => video.addEventListener('seeked', res, {once:true})); } catch(_e){}
+
+        const maxW = 480;
+        const vw = Math.max(1, video.videoWidth || 480);
+        const vh = Math.max(1, video.videoHeight || 270);
+        const scale = Math.min(1, maxW / vw);
+        const cw = Math.round(vw * scale), ch = Math.round(vh * scale);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = cw; canvas.height = ch;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, cw, ch);
+
+        const posterBlob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.8));
+        if (posterBlob){
+          const posterUrl = URL.createObjectURL(posterBlob);
+          videoPosterCache.set(repoPath, posterUrl);
+          img.src = posterUrl;
+          img.dataset.generated = '1';
+        } else {
+          img.src = 'https://via.placeholder.com/300x225/222/ddd?text=Video'; img.dataset.generated = '1';
+        }
+      }catch(e){
+        img.src = 'https://via.placeholder.com/300x225/222/ddd?text=Video'; img.dataset.generated = '1';
+      }
+    }
+
+    /* ==== Модалка ==== */
+    async function openModal(item){
+      if (item.type==='folder') return;
+
+      const files = listFiles();
+      currentIndex = files.findIndex(f => f.repoPath === item.repoPath);
+
+      modalLoader.classList.add('active');
+      resetDragState();
+      isZoomed = false;
+      modalZoom.innerHTML = '<i class="fas fa-search-plus"></i> Увеличить (100%)';
+
+      imageModal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+      showControls();
+
+      const baseInfo = `${item.name} | ${formatFileSize(item.size)}`;
+      const scoreInfo = (typeof item.aestheticScore === 'number') ? ` | Aesthetic: ${item.aestheticScore.toFixed(2)}` : '';
+      imageInfo.textContent = baseInfo + scoreInfo;
+      imageCounter.textContent = `${currentIndex + 1} / ${files.length}`;
+
+      try{
+        if (item.type==='file-image'){
+          const u = await blobUrl(item.url);
+          modalVideo.pause(); modalVideo.style.display='none'; modalVideo.removeAttribute('src');
+          modalImage.src = ''; modalImage.classList.remove('loaded','zoomed','dragging');
+          modalImage.style.display='block';
+          modalImage.onload = ()=>{ modalImage.classList.add('loaded'); modalLoader.classList.remove('active'); };
+          modalImage.src = u;
+        } else {
+          modalImage.style.display='none'; modalImage.removeAttribute('src');
+          modalVideo.style.display='block';
+          modalVideo.loop = true; modalVideo.muted = true; modalVideo.autoplay = true; modalVideo.preload = 'auto';
+
+          const partialURL = await fetchPartial(item.url, MODAL_START_BYTES);
+          modalVideo.src = partialURL;
+          modalVideo.onloadeddata = ()=>{
+            modalLoader.classList.remove('active');
+            modalVideo.play().catch(()=>{});
+          };
+
+          (async ()=>{
+            try{
+              const fullURL = await blobUrl(item.url);
+              const t = modalVideo.currentTime || 0;
+              const wasPaused = modalVideo.paused;
+              modalVideo.src = fullURL;
+              modalVideo.onloadedmetadata = ()=>{
+                modalVideo.currentTime = t;
+                if (!wasPaused) modalVideo.play().catch(()=>{});
+              };
+            }catch(_e){}
+          })();
+        }
+
+        warmupNeighbors();
+      }catch(e){
+        modalLoader.classList.remove('active');
+        modalImage.style.display='block'; modalVideo.style.display='none';
+        modalImage.src='https://via.placeholder.com/800x600/ff0000/ffffff?text=Ошибка+загрузки';
+      }
+    }
+
+    function closeModal(){
+      imageModal.classList.remove('active');
+      document.body.style.overflow='auto';
+      clearTimeout(controlsTimeout);
+      resetDragState();
+      modalDownload.classList.remove('visible');
+      if (!modalVideo.paused) modalVideo.pause();
+    }
+
+    function navigateImage(dir){
+      if (isZoomed) return;
+      const files = listFiles();
+      currentIndex = (currentIndex + dir + files.length) % files.length;
+      openModal(files[currentIndex]);
+    }
+
+    function toggleZoom(){
+      const item = listFiles()[currentIndex];
+      if (!item || item.type!=='file-image') return;
+      isZoomed = !isZoomed;
+      if (isZoomed){
+        modalImage.classList.add('zoomed');
+        modalZoom.innerHTML = '<i class="fas fa-search-minus"></i> Уменьшить';
+        hideControls();
+        resetDragState();
+      } else {
+        modalImage.classList.remove('zoomed');
+        modalZoom.innerHTML = '<i class="fas fa-search-plus"></i> Увеличить (100%)';
+        showControls();
+        resetDragState();
+      }
+    }
+    function resetDragState(){ isDragging=false; modalImage.classList.remove('dragging'); translateX=0; translateY=0; prevTranslateX=0; prevTranslateY=0; updateImagePosition(); }
+    function updateImagePosition(){ if (isZoomed) modalImage.style.transform=`scale(1.5) translate(${translateX}px, ${translateY}px)`; else modalImage.style.transform='scale(1)'; }
+
+    /* ==== Предзагрузка ==== */
+    async function warmupNeighbors(){
+      const files = listFiles();
+      const idxs = [-3,-2,-1,1,2,3].map(d => (currentIndex + d + files.length) % files.length);
+      for (const i of idxs){
+        const it = files[i]; if (!it) continue;
+        if (it.type==='file-video'){
+          const thumbImg = document.querySelector(`img[data-repo-path="${CSS.escape(it.repoPath)}"]`);
+          if (thumbImg && !thumbImg.dataset.generated){
+            schedulePoster(thumbImg);
+          }
+          blobUrl(it.url).catch(()=>{});
+        } else if (it.type==='file-image'){
+          blobUrl(it.url).catch(()=>{});
+        }
+      }
+    }
+
+    /* ==== Поиск/сортировка ==== */
+    function filterImages(q){
+      // сохраняем текущий порядок элементов, просто фильтруем по имени
+      const filtered = currentItems.filter(it=>it.name.toLowerCase().includes(q.toLowerCase()));
+      renderGallery(filtered);
+    }
+    function updateSelectionInfo(){ const c = selectedItems.size; selectionInfo.textContent = c ? `Выбрано: ${c}` : 'Выберите элементы'; downloadBtn.disabled = c===0; deleteBtn.disabled = c===0; }
+    function toggleSelection(repoPath){ if (selectedItems.has(repoPath)) selectedItems.delete(repoPath); else selectedItems.add(repoPath); updateSelectionInfo(); }
+    function clearSelection(){ selectedItems.clear(); updateSelectionInfo(); document.querySelectorAll('.item-checkbox').forEach(c=>{ c.checked=false; const card=c.closest('.thumbnail, .folder'); if (card) card.classList.remove('selected'); }); }
+
+    /* ==== Скачивание / Удаление ==== */
+    async function downloadSelected(){
+      if (selectedItems.size===0) return;
+      downloadBtn.classList.add('processing'); downloadBtn.disabled = true;
+      downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Создание архива...';
+      try{
+        const zip = new JSZip(); let fileCount=0;
+        for (const repoPath of selectedItems){
+          const url = repoResolveUrl(repoPath);
+          try{
+            const res = await fetchWithAuth(url);
+            const blob = await res.blob();
+            const fileName = repoPath.split('/').pop();
+            zip.file(fileName, blob);
+            fileCount++;
+            selectionInfo.textContent = `Добавлено ${fileCount}/${selectedItems.size}...`;
+          }catch(e){ console.error('Ошибка загрузки', repoPath, e); }
+        }
+        const content = await zip.generateAsync({type:'blob'});
+        saveAs(content, "selected_files.zip");
+        selectionInfo.textContent = `Готово! Скачано ${fileCount} файла(ов)`;
+        setTimeout(clearSelection, 2000);
+      }catch(e){
+        selectionInfo.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${e.message}</span>`;
+      }finally{
+        downloadBtn.classList.remove('processing');
+        downloadBtn.innerHTML = '<i class="fas fa-download"></i> Скачать выбранные';
+        downloadBtn.disabled = selectedItems.size===0;
+      }
+    }
+
+    async function downloadCurrentItem(){
+      const files = listFiles();
+      const item = files[currentIndex];
+      if (!item) return;
+      try{
+        const res = await fetchWithAuth(item.url);
+        const blob = await res.blob();
+        saveAs(blob, item.name);
+      }catch(e){ console.error('Скачивание не удалось', e); }
+    }
+
+    async function deleteSelected(){
+      if (selectedItems.size===0) return;
+      if (!hfToken){ alert('Нужен токен.'); return; }
+      if (!confirm(`Удалить выбранные (${selectedItems.size}) файл(а)? Действие необратимо.`)) return;
+      try{
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Удаляем...';
+        const ops = Array.from(selectedItems).map(p=>({ op:'delete', path:p }));
+        const body = { operations: ops, commit_message: `Delete ${ops.length} file(s) via gallery` };
+        const res = await fetch(commitUrl(), { method:'POST', headers: { 'Content-Type':'application/json', ...headersAuth() }, body: JSON.stringify(body) });
+        if (!res.ok){ const txt = await res.text().catch(()=> ''); throw new Error(`Commit API error: ${res.status} ${txt}`); }
+        selectionInfo.textContent = `Удалено: ${ops.length}`;
+        await loadFolder(currentPath);
+        clearSelection();
+      }catch(e){
+        selectionInfo.innerHTML = `<span style="color:#ff6b6b">Ошибка удаления: ${e.message}</span>`;
+      }finally{
+        deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Удалить выбранные';
+        deleteBtn.disabled = selectedItems.size===0;
+      }
+    }
+
+    /* ==== Навигация/инициализация ==== */
+    function showControls(){
+      if (isZoomed) return;
+      modalClose.classList.add('visible'); modalPrev.classList.add('visible'); modalNext.classList.add('visible');
+      imageInfo.classList.add('visible'); imageCounter.classList.add('visible'); modalDownload.classList.add('visible');
+      const item = listFiles()[currentIndex];
+      if (item && item.type==='file-image') modalZoom.classList.add('visible'); else modalZoom.classList.remove('visible');
+      clearTimeout(controlsTimeout); controlsTimeout = setTimeout(hideControls, HIDE_DELAY);
+    }
+    function hideControls(){
+      modalClose.classList.remove('visible'); modalPrev.classList.remove('visible'); modalNext.classList.remove('visible');
+      modalZoom.classList.remove('visible'); imageInfo.classList.remove('visible'); imageCounter.classList.remove('visible'); modalDownload.classList.remove('visible');
+    }
+
+    async function init(){
+      let tg = null;
+      try {
+          tg = window.Telegram?.WebApp;
+          if (tg) {
+              tg.ready();   // говорим Telegram, что WebApp готов
+              tg.expand();  // раскрыть на всю высоту
+              // Можно, например, применить цвет темы:
+              document.body.style.backgroundColor = tg.themeParams.bg_color || '#0f3460';
+          }
+      } catch (e) {
+          console.log('Not in Telegram WebApp, обычный браузер:', e);
+      }
+      tokenSubmit.addEventListener('click', authenticate);
+      tokenInput.addEventListener('keypress', e=>{ if (e.key==='Enter') authenticate(); });
+      logoutBtn.addEventListener('click', logout);
+
+      const savedToken = localStorage.getItem('hfToken');
+      if (savedToken){ tokenInput.value = savedToken; await authenticate(); }
+
+      modalClose.addEventListener('click', closeModal);
+      modalPrev.addEventListener('click', ()=>navigateImage(-1));
+      modalNext.addEventListener('click', ()=>navigateImage(1));
+      modalZoom.addEventListener('click', toggleZoom);
+      downloadBtn.addEventListener('click', downloadSelected);
+      deleteBtn.addEventListener('click', deleteSelected);
+      modalDownload.addEventListener('click', downloadCurrentItem);
+
+      imageModal.addEventListener('mousemove', showControls);
+      imageModal.addEventListener('touchmove', showControls);
+      modalImage.addEventListener('click', ()=>{ if (isZoomed) toggleZoom(); });
+      imageModal.addEventListener('click', (e)=>{ if (e.target===imageModal) closeModal(); });
+
+      modalImage.addEventListener('touchstart', (e)=>{ if (isZoomed) return; touchStartX=e.touches[0].clientX; touchStartY=e.touches[0].clientY; });
+      modalImage.addEventListener('touchend', (e)=>{ if (isZoomed) return; const dx=touchStartX - e.changedTouches[0].clientX; const dy=touchStartY - e.changedTouches[0].clientY; if (Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>50){ navigateImage(dx>0?1:-1); }});
+
+      modalImage.addEventListener('mousedown', (e)=>{ if (!isZoomed) return; e.preventDefault(); isDragging=true; modalImage.classList.add('dragging'); startX=e.clientX; startY=e.clientY; });
+      document.addEventListener('mousemove', (e)=>{ if (!isDragging || !isZoomed) return; translateX = prevTranslateX + (e.clientX-startX); translateY = prevTranslateY + (e.clientY-startY); updateImagePosition(); });
+      document.addEventListener('mouseup', ()=>{ if (!isDragging) return; isDragging=false; modalImage.classList.remove('dragging'); prevTranslateX=translateX; prevTranslateY=translateY; });
+
+      modalImage.addEventListener('touchstart', (e)=>{ if (!isZoomed) return; e.preventDefault(); if (e.touches.length===1){ isDragging=true; modalImage.classList.add('dragging'); startX=e.touches[0].clientX; startY=e.touches[0].clientY; }});
+      document.addEventListener('touchmove', (e)=>{ if (!isDragging || !isZoomed || e.touches.length!==1) return; translateX = prevTranslateX + (e.touches[0].clientX-startX); translateY = prevTranslateY + (e.touches[0].clientY-startY); updateImagePosition(); });
+      document.addEventListener('touchend', ()=>{ if (!isDragging) return; isDragging=false; modalImage.classList.remove('dragging'); prevTranslateX=translateX; prevTranslateY=translateY; });
+
+      document.addEventListener('keydown',(e)=>{
+        if (!imageModal.classList.contains('active')) return;
+        if (e.key==='Escape') closeModal();
+        else if (e.key==='ArrowLeft' && !isZoomed) navigateImage(-1);
+        else if (e.key==='ArrowRight' && !isZoomed) navigateImage(1);
+        else if (e.key===' ' || e.key==='z') toggleZoom();
+      });
+
+      btnBack.addEventListener('click', ()=>{ if (currentPath){ const parts = currentPath.split('/'); parts.pop(); loadFolder(parts.join('/')); }});
+      btnRoot.addEventListener('click', ()=>loadFolder(''));
+
+      sortNameBtn.addEventListener('click', ()=>{
+        if (currentSort==='name') return;
+        currentSort='name';
+        sortNameBtn.classList.add('active'); sortDateBtn.classList.remove('active');
+        currentItems = sortItems(currentItems);
+        renderGallery(currentItems);
+      });
+      sortDateBtn.addEventListener('click', ()=>{
+        if (currentSort==='date') return;
+        currentSort='date';
+        sortDateBtn.classList.add('active'); sortNameBtn.classList.remove('active');
+        currentItems = sortItems(currentItems);
+        renderGallery(currentItems);
+      });
+
+      searchInput.addEventListener('input', (e)=> filterImages(e.target.value));
+
+      if (!hfToken){ authModal.style.display='flex'; } else { await loadFolder(''); }
+    }
+    init();
+  </script>
+</body>
+</html>
